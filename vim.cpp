@@ -61,7 +61,7 @@ class Text {
             return 0;
         }
         Line *getCurrentLine() {
-            if(state->getCursorY() >= max_line) {
+            if(state->getCursorY() > max_line) {
                 return NULL;
             }
 
@@ -278,6 +278,15 @@ class InputHandler {
                                     state->setFileName(command_text.substr(2));
                                     text->openFile(state->getFileName());
                                 }
+                            }
+                            break;
+                        case 127:
+                            {std::string status = state->getStatus();
+                            if(state->getCursorX() == 1) {
+                                break;
+                            }
+                            state->setStatus(status.substr(0, status.length() - 1));
+                            state->setCursorX(state->getCursorX() - 1);
                             }
                             break;
                         default:
