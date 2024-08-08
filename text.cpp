@@ -6,15 +6,14 @@
 #include <fstream>
 #include <filesystem>
 
-
-State *state;
+State *text_state;
 std::vector<Line> lines;
 int max_line;
 
 
-Text::Text(State *_state) {
-    state = _state;
-    for(int i = 0; i < state->getScreenRows(); i++) {
+Text::Text(State *_text_state) {
+    text_state = _text_state;
+    for(int i = 0; i < text_state->getScreenRows(); i++) {
         lines.push_back(Line(""));
         max_line = i;
     }
@@ -25,11 +24,11 @@ int Text::appendToLine(int index, std::string str) {
     return 0;
 }
 Line *Text::getCurrentLine() {
-    if(state->getCursorY() > max_line) {
+    if(text_state->getCursorY() > max_line) {
         return NULL;
     }
 
-    Line *ret = &lines.at(state->getCursorY());
+    Line *ret = &lines.at(text_state->getCursorY());
     return ret;
 }
 Line *Text::getLine(int index) {
@@ -101,3 +100,4 @@ int Text::findStr(std::string search, int start) {
     }
     return -1;
 }
+#undef IN_TEXT_FILE

@@ -9,6 +9,10 @@
 #include <filesystem>
 
 class Text {
+    private:
+        State *state;
+        Text *text;
+
     public:
         Text(State *_state);
         int appendToLine(int index, std::string str);

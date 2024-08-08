@@ -12,6 +12,7 @@
 #include "state.h"
 #include "line.h"
 #include "text.h"
+#include "screen.h"
 /*** GLOBALS ***/
 
 
@@ -268,102 +269,18 @@ class InputHandler {
         }
 };
 
-class Screen {
-    private:
-        State *state;
-        Text *text;
-    public:
-        Screen(State* _state, Text* _text) {
-            state = _state;
-            text = _text;
-            if(state->updateDimensions() == -1) {
-                die("updateDimensions");
-            }
-
-        }
-
-        
-        std::string makeWelcomeMsg() {
-            std::string MSG = "V - bad vim";
-            int padding = (state->getScreenCols() - MSG.length()) / 2;
-            std::string spaces(padding+3, ' ');
-            return spaces.append(MSG);
-        }
-
-        std::string makeStatusMsg() {
-            std::string explicit_status = state->getStatus();
-            std::string filename = state->getFileName();
-
-            int num_spaces = (state->getScreenCols() - (explicit_status.length() + filename.length())) - 1;
-
-            std::string spaces(num_spaces, ' ');
-            std::string msg = explicit_status.append(spaces);
-            msg.append(filename);
-            return msg;
-        }
-
-        void drawRows() {
-            bool show_welcome = true;    
-            int offsetVertical = state->getOffsetVertical();
-            for(int i = offsetVertical; i < offsetVertical + state->getScreenRows(); i++) {
-                Line *current_line = text->getLine(i);
-                std::string current_line_text = current_line->getText();
-                if(current_line_text != "") {
-                    state->buffAppend(current_line_text);
-                    show_welcome = false;
-                } else {
-                    state->buffAppend("~");
-                    if(i == state->getScreenRows() / 3 && show_welcome) {
-                        state->buffAppend(makeWelcomeMsg());
-                    }
-                }
-                // this clears everything in the current line except the tilde 
-                state->buffAppend("\x1b[K"); 
-
-                if(i < (state->getScreenRows() + offsetVertical)) {
-                    state->buffAppend("\r\n");
-                }
-                
-                if(i == state->getScreenRows() + offsetVertical - 1) {
-                    state->buffAppend(makeStatusMsg());
-                    state->buffAppend("\x1b[K"); 
-                }
-            }
-        }
-
-        void refreshScreen() {
-            //hide cursor while repainting
-            state->buffAppend("\x1b[?25l");
-            // move cursor to top left
-            state->buffAppend("\x1b[H");
-            drawRows();
-            // make escape sequence to place cursor
-            
-            std::stringstream cursor_set_msg;
-            cursor_set_msg << "\x1b[" << state->getCursorY() + 1 - state->getOffsetVertical() << ";" << state->getCursorX() + 1 << "H";
-            state->buffAppend(cursor_set_msg.str());
-            // show cursor again
-            state->buffAppend("\x1b[?25h");
-            //print current buffer
-            std::string buff = state->getBuff();
-            std::cout << buff;
-            //clear current buffer
-            state->buffRemove(0);
-        }
-
-};
 
 
 
 /*** MAIN ***/
 
 int main() {
-    State state = State();
-    Text text = Text(&state);
+    State main_state = State();
+    Text text = Text(&main_state);
     Terminal terminal = Terminal();
     terminal.enableRawMode();
-    InputHandler inputHandler = InputHandler(&state, &text);
-    Screen screen = Screen(&state, &text);
+    InputHandler inputHandler = InputHandler(&main_state, &text);
+    Screen screen = Screen(&main_state, &text);
     while (true) {
         screen.refreshScreen();
         inputHandler.getChar();
