@@ -5,10 +5,12 @@
 #include "line.h"
 #include <fstream>
 #include <filesystem>
+#include "tabman.h"
 
 State *text_state;
 std::vector<Line> lines;
 int max_line;
+Tabman text_tabman;
 
 
 Text::Text(State *_text_state) {

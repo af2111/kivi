@@ -1,5 +1,6 @@
 
 #include "state.h"
+#include "tabman.h"
 #include "text.h"
 #include "util.h"
 
@@ -9,7 +10,7 @@ class Screen {
         State *state;
         Text *text;
     public:
-        Screen(State* _state, Text* _text);
+        Screen(Tabman *_tabman);
 
         std::string makeWelcomeMsg();
 
@@ -18,4 +19,6 @@ class Screen {
         void drawRows();
 
         void refreshScreen();
+
+        void updateTab();
 };

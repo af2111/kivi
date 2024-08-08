@@ -1,14 +1,22 @@
 #include "state.h"
+#include "tabman.h"
 #include "text.h"
 #include "util.h"
 #include "screen.h"
 
 State *screen_state;
 Text *text;
+Tabman *screen_tabman;
 
-Screen::Screen(State* _screen_state, Text* _text) {
-    screen_state = _screen_state;
-    text = _text;
+void Screen::updateTab() {
+    Tab init_tab = screen_tabman->getTab(screen_tabman->getCurrentTab());
+    screen_state = init_tab.tab_state;
+    text = init_tab.tab_text;
+}
+
+Screen::Screen(Tabman *_tabman) {
+    screen_tabman = _tabman; 
+    updateTab();
     if(screen_state->updateDimensions() == -1) {
         die("updateDimensions");
     }

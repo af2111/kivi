@@ -1,6 +1,7 @@
 /*** INCLUDES  ***/
 
 #include <cstring>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <termios.h>
@@ -25,6 +26,14 @@ class InputHandler {
         State *state;
         Text *text;
         Screen *screen;
+        Tabman *input_tabman;
+
+
+        void updateTab() {
+            Tab init_tab = input_tabman->getTab(input_tabman->getCurrentTab());
+            state = init_tab.tab_state;
+            text = init_tab.tab_text;
+        }
 
         void goDown() {        
             if(state->getCursorY() + 1 >= state->getScreenRows() + state->getOffsetVertical()) {
@@ -52,7 +61,8 @@ class InputHandler {
 
         void enterNormalMode() {
             state->setEditorMode(0);
-            state->setStatus("NORMAL");
+            //state->setStatus("NORMAL");
+            state->setStatus(std::to_string(input_tabman->getCurrentTab()));
         }
 
         void enterColonMode() {
@@ -115,9 +125,9 @@ class InputHandler {
         }
 
     public:
-        InputHandler(State *_state, Text *_text, Screen *_screen) {
-            state = _state;
-            text = _text;
+        InputHandler(Tabman *_tabman, Screen *_screen) {
+            input_tabman = _tabman;
+            updateTab();
             screen = _screen;
         }
 
@@ -249,6 +259,16 @@ class InputHandler {
                                     state->setEditorMode(3);
 
                                 }
+                                if(command_text.substr(0, 2) == "t+") {
+                                    input_tabman->nextTab();
+                                    updateTab();
+                                    screen->updateTab();
+                                }
+                                if(command_text.substr(0, 2) == "t-") {
+                                    input_tabman->prevTab();
+                                    updateTab();
+                                    screen->updateTab();
+                                }
                                 break;
                             }
                             break;
@@ -288,12 +308,11 @@ class InputHandler {
 /*** MAIN ***/
 
 int main() {
-    State main_state = State();
-    Text text = Text(&main_state);
     Terminal terminal = Terminal();
     terminal.enableRawMode();
-    Screen screen = Screen(&main_state, &text);
-    InputHandler inputHandler = InputHandler(&main_state, &text, &screen);
+    Tabman tabmanager = Tabman();
+    Screen screen = Screen(&tabmanager);
+    InputHandler inputHandler = InputHandler(&tabmanager, &screen);
     while (true) {
         screen.refreshScreen();
         inputHandler.getChar();
