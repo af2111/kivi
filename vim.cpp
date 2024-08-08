@@ -24,6 +24,7 @@ class InputHandler {
         char current_char;
         State *state;
         Text *text;
+        Screen *screen;
 
         void goDown() {        
             if(state->getCursorY() + 1 >= state->getScreenRows() + state->getOffsetVertical()) {
@@ -88,10 +89,36 @@ class InputHandler {
             state->setStatus(state->getStatus().append(std::string(1, _char)));
         }
 
+        
+        void goToNextRes() {
+            int start = state->getSearchRes();
+            int res = text->findStr(state->getSearch(), start + 1);
+            state->setSearchRes(res);
+            if(res == -1) {
+                int first_res = text->findStr(state->getSearch(), 0);
+                state->setCursorY(first_res);
+                state->setOffsetVertical(first_res);
+                screen->refreshScreen();
+                state->setSearchRes(first_res);
+                return;
+            }
+            int text_maxline = text->getMaxLine();
+            int space_taken_after_res = text_maxline - res;
+            if(space_taken_after_res < state->getScreenRows()) {
+                for(int i = 0; i < state->getScreenRows() - space_taken_after_res; i++) {
+                    text->addLine();
+                }
+            }
+            state->setCursorY(res);
+            state->setOffsetVertical(res);
+            screen->refreshScreen();
+        }
+
     public:
-        InputHandler(State *_state, Text *_text) {
+        InputHandler(State *_state, Text *_text, Screen *_screen) {
             state = _state;
             text = _text;
+            screen = _screen;
         }
 
         void getChar() {
@@ -218,8 +245,7 @@ class InputHandler {
                                         state->setStatus("Not Found!");
                                         break;
                                     }
-                                    state->setOffsetVertical(state->getSearchRes());
-                                    state->setCursorY(state->getSearchRes());
+                                    goToNextRes();
                                     state->setEditorMode(3);
 
                                 }
@@ -236,25 +262,12 @@ class InputHandler {
                     break;
 
                 case 3:
-                    int start = state->getSearchRes();
-                    int res = text->findStr(state->getSearch(), start + 1);
-                    state->setSearchRes(res);
-                    if(res == -1) {
-                        state->setStatus("break");
-                        state->setSearchRes(text->findStr(state->getSearch(), 0));
-                        state->setOffsetVertical(state->getSearchRes());
-                        state->setCursorY(state->getSearchRes());
-                        break;
-                    }
-                    int offsetNeeded = res; //computeAdditionalOffset(res, state->getOffsetVertical(), state->getScreenRows());
-                    state->setOffsetVertical(offsetNeeded);
-                    state->setStatus("Offset: " + std::to_string(offsetNeeded) + "Start: " + std::to_string(start)); 
-                    state->setCursorY(res);
                     switch(current_char) {
                         case 'n':
+                            goToNextRes();
                             break;
                         case '\n':
-                            state->setCursorY(start);
+                            state->setCursorY(state->getCursorY());
                             saveCursorPos();
                             enterNormalMode();
                             break;
@@ -279,8 +292,8 @@ int main() {
     Text text = Text(&main_state);
     Terminal terminal = Terminal();
     terminal.enableRawMode();
-    InputHandler inputHandler = InputHandler(&main_state, &text);
     Screen screen = Screen(&main_state, &text);
+    InputHandler inputHandler = InputHandler(&main_state, &text, &screen);
     while (true) {
         screen.refreshScreen();
         inputHandler.getChar();
