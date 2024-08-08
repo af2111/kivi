@@ -95,8 +95,13 @@ class Text {
                 i++;
             }
 
+
             return 0;
                 
+        }
+
+        int getMaxLine() {
+            return max_line;
         }
 };
 
@@ -149,6 +154,26 @@ class InputHandler {
             state->setBuffY(state->getCursorY());
         }
 
+        void restoreCursorPos() {
+            state->setCursorX(state->getBuffX());
+            state->setCursorY(state->getBuffY());
+        }
+
+        int statusBackspace() {
+            std::string status = state->getStatus();
+            if(state->getCursorX() == 1) {
+                return -1;
+            }
+            state->setStatus(status.substr(0, status.length() - 1));
+            state->setCursorX(state->getCursorX() - 1);
+            return 0;
+        }
+
+        void statusWriteChar(char _char) {
+            state->setCursorX(state->getCursorX() + 1);
+            state->setStatus(state->getStatus().append(std::string(1, _char)));
+        }
+
     public:
         InputHandler(State *_state, Text *_text) {
             state = _state;
@@ -160,17 +185,11 @@ class InputHandler {
         }
 
         void handleChar() {
-            int current_state = state->getEditorMode();
             int currentY = state->getCursorY();
             int currentX = state->getCursorX();
             Line *current_line = text->getCurrentLine();
-            int max_rows = state->getScreenRows();
-            int max_cols = state->getScreenCols();
             // these are used to put the cursor back after exiting colon mode
-            int buff_x = state->getBuffX();
-            int buff_y = state->getBuffY();
-            int vertical_offset = state->getOffsetVertical();
-            switch(current_state) {
+            switch(state->getEditorMode()) {
                 case 0:
                     switch(current_char) {
                         case 'i':
@@ -187,7 +206,7 @@ class InputHandler {
                         case 'k':
                             goUp();
                             break;
-                        case 'h':
+                        case 'h': 
                             if(currentX != 0) {
                                 state->setCursorX(currentX - 1);
                             } else {
@@ -245,19 +264,15 @@ class InputHandler {
                 case 2:
                     switch(current_char) {
                         case 27:
-                            state->setEditorMode(0);
-                            state->setStatus("NORMAL");
-                            state->setCursorX(buff_x);
-                            state->setCursorY(buff_y);
+                            enterNormalMode();
+                            restoreCursorPos();
                             break;
                         case '\n':
                             //get command text without colon
                             {
                                 std::string command_text = state->getStatus().substr(1);
-                                state->setEditorMode(0);
-                                state->setStatus("NORMAL");
-                                state->setCursorX(buff_x);
-                                state->setCursorY(buff_y);
+                                enterNormalMode();
+                                restoreCursorPos();
                                 if(command_text == "q") {
                                     quitRegular();
                                     break;
@@ -285,17 +300,10 @@ class InputHandler {
                             }
                             break;
                         case 127:
-                            {std::string status = state->getStatus();
-                            if(state->getCursorX() == 1) {
-                                break;
-                            }
-                            state->setStatus(status.substr(0, status.length() - 1));
-                            state->setCursorX(state->getCursorX() - 1);
-                            }
+                            statusBackspace();
                             break;
                         default:
-                            state->setCursorX(currentX + 1);
-                            state->setStatus(state->getStatus().append(std::string(1, current_char)));
+                            statusWriteChar(current_char);
                             break;
                         
                             
@@ -335,6 +343,18 @@ class Screen {
             return spaces.append(MSG);
         }
 
+        std::string makeStatusMsg() {
+            std::string explicit_status = state->getStatus();
+            std::string filename = state->getFileName();
+
+            int num_spaces = (state->getScreenCols() - (explicit_status.length() + filename.length())) - 1;
+
+            std::string spaces(num_spaces, ' ');
+            std::string msg = explicit_status.append(spaces);
+            msg.append(filename);
+            return msg;
+        }
+
         void drawRows() {
             bool show_welcome = true;    
             int offsetVertical = state->getOffsetVertical();
@@ -356,8 +376,9 @@ class Screen {
                 if(i < (state->getScreenRows() + offsetVertical)) {
                     state->buffAppend("\r\n");
                 }
+                
                 if(i == state->getScreenRows() + offsetVertical - 1) {
-                    state->buffAppend(state->getStatus());
+                    state->buffAppend(makeStatusMsg());
                     state->buffAppend("\x1b[K"); 
                 }
             }
