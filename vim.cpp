@@ -348,7 +348,7 @@ class InputHandler {
                     state->setCursorY(res);
                     int offsetNeeded = computeAdditionalOffset(res, state->getOffsetVertical(), state->getScreenRows());
                     if(offsetNeeded != 0) {
-                        state->setOffsetVertical(state->getOffsetVertical() + computeAdditionalOffset(state->getSearchRes(), state->getOffsetVertical(), state->getScreenRows()) + state->getScreenRows() - 1);
+                        state->setOffsetVertical(state->getOffsetVertical() + computeAdditionalOffset(state->getSearchRes(), state->getOffsetVertical(), state->getScreenRows()) + state->getScreenRows());
                     }
                     state->setStatus(std::to_string(offsetNeeded)); 
                     switch(current_char) {
