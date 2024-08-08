@@ -1,6 +1,7 @@
 /*** INCLUDES  ***/
 
 #include <cstring>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -13,34 +14,9 @@
 #include "util.h"
 #include "terminal.h"
 #include "state.h"
-
+#include "line.h"
 /*** GLOBALS ***/
 
-
-class Line {
-    private:
-        std::string text;
-    public:
-        Line(std::string _text) {
-            text = _text;
-        }
-        void append(std::string str) {
-            text.append(str);
-        }
-        std::string getText() {
-            return text;
-        } 
-        void insert(int index, std::string str) {
-            text.insert(index, str);
-        }
-        void removeChar(int index) {
-            text.erase(index, 1);
-        }
-        void erase(int index) {
-            text.erase(index);
-        }
-        
-};
 
 class Text {
     private:
@@ -97,15 +73,15 @@ class Text {
             max_line++;
             lines.push_back(Line(""));
         }
-        void scroll_back() {
-            
-        }
         void clear() {
             for(int i = 0; i < max_line; i++) {
                 getLine(i)->erase(0);
             }
         }
-        void openFile(std::string path) {
+        int openFile(std::string path) {
+            if(!std::filesystem::exists(path)) {
+                return -1;
+            }
             clear();
             std::ifstream file;
             file.open(path);
@@ -118,6 +94,8 @@ class Text {
                 getLine(i)->append(current_line);
                 i++;
             }
+
+            return 0;
                 
         }
 };
@@ -129,18 +107,6 @@ class InputHandler {
         char current_char;
         State *state;
         Text *text;
-    public:
-        InputHandler(State *_state, Text *_text) {
-            state = _state;
-            text = _text;
-        }
-
-        void getChar() {
-            // if(read(STDIN_FILENO, &current_char, 1) != 1) {
-            //     die("read getChar");
-            // }
-            std::cin.get(current_char);    
-        }
 
         void goDown() {        
             if(state->getCursorY() + 1 >= state->getScreenRows() + state->getOffsetVertical()) {
@@ -160,6 +126,39 @@ class InputHandler {
                 state->setCursorX(text->getLine(state->getCursorY())->getText().length());
             }
         }
+
+        void enterInsertMode() {
+            state->setEditorMode(1);
+            state->setStatus("INSERT");
+        }
+
+        void enterNormalMode() {
+            state->setEditorMode(0);
+            state->setStatus("NORMAL");
+        }
+
+        void enterColonMode() {
+            state->setStatus(":");
+            state->setCursorY((state->getScreenCols() + state->getOffsetVertical()));
+            state->setCursorX(1);
+            state->setEditorMode(2);
+        }
+
+        void saveCursorPos() {
+            state->setBuffX(state->getCursorX());
+            state->setBuffY(state->getCursorY());
+        }
+
+    public:
+        InputHandler(State *_state, Text *_text) {
+            state = _state;
+            text = _text;
+        }
+
+        void getChar() {
+            std::cin.get(current_char);    
+        }
+
         void handleChar() {
             int current_state = state->getEditorMode();
             int currentY = state->getCursorY();
@@ -175,16 +174,11 @@ class InputHandler {
                 case 0:
                     switch(current_char) {
                         case 'i':
-                            state->setEditorMode(1);
-                            state->setStatus("INSERT");
+                            enterInsertMode();
                             break;
                         case ':':
-                            state->setBuffX(currentX);
-                            state->setBuffY(currentY);
-                            state->setStatus(":");
-                            state->setCursorY((max_rows + vertical_offset));
-                            state->setCursorX(1);
-                            state->setEditorMode(2);
+                            saveCursorPos();
+                            enterColonMode();
                             break;
                         case '\n':
                         case 'j':
@@ -196,6 +190,8 @@ class InputHandler {
                         case 'h':
                             if(currentX != 0) {
                                 state->setCursorX(currentX - 1);
+                            } else {
+                                goUp();
                             }
                             break;
                         case 'l':
@@ -213,8 +209,7 @@ class InputHandler {
                 case 1:
                     switch(current_char) {
                         case 27: 
-                            state->setEditorMode(0);
-                            state->setStatus("NORMAL");
+                            enterNormalMode();
                             break;
                         case '\n':
                             if(currentX == current_line->getText().length()) {
@@ -237,7 +232,7 @@ class InputHandler {
                                 goUp();
                                 break;
                             }
-                            current_line->erase(currentX - 1);
+                            current_line->removeChar(currentX - 1);
                             state->setCursorX(currentX - 1);
                             break;
                         default:
@@ -271,6 +266,8 @@ class InputHandler {
                                     if(command_text == "w") {
                                         if(state->getFileName() != "") {
                                             text->writeFile(state->getFileName());
+                                        } else {
+                                            state->setStatus("Filename required!");
                                         }
                                     }
                                     if(command_text.substr(1, 1) == " ") {
@@ -280,8 +277,11 @@ class InputHandler {
                                 }
                                 if(command_text.substr(0, 2) == "o ") {
                                     state->setFileName(command_text.substr(2));
-                                    text->openFile(state->getFileName());
+                                    if(text->openFile(state->getFileName()) == -1) {
+                                        state->setStatus("File doesn't exist!");
+                                    }
                                 }
+                                break;
                             }
                             break;
                         case 127:
