@@ -85,6 +85,7 @@ class Text {
 
             std::ofstream write_file;
             write_file.open(path);
+            
             for(int i = 0; i <= last_text_line; i++) {
                 write_file << lines.at(i).getText() << "\n";
             }
@@ -262,11 +263,20 @@ class InputHandler {
                                     quitRegular();
                                     break;
                                 }
-                                if(command_text == "w") {
-                                    text->writeFile("text");
+                                if(command_text.substr(0, 1) == "w") {
+                                    if(command_text == "w") {
+                                        if(state->getFileName() != "") {
+                                            text->writeFile(state->getFileName());
+                                        }
+                                    }
+                                    if(command_text.substr(1, 1) == " ") {
+                                        state->setFileName(command_text.substr(2));
+                                        text->writeFile(state->getFileName());
+                                    }
                                 }
-                                if(command_text == "o") {
-                                    text->openFile("text");
+                                if(command_text.substr(0, 2) == "o ") {
+                                    state->setFileName(command_text.substr(2));
+                                    text->openFile(state->getFileName());
                                 }
                             }
                             break;

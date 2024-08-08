@@ -6,6 +6,8 @@
 int cursor_x;
 int cursor_y;
 std::string buff;
+std::string status;
+std::string filename;
 // 0 is normal, 1 is insert, 2 is special (: mode)
 int editor_mode;
 int screenRows;
@@ -39,7 +41,7 @@ int State::updateDimensions() {
     if(ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0 || ws.ws_row == 0) {
         return -1;
     }
-    setScreenRows(ws.ws_row);
+    setScreenRows(ws.ws_row - 1);
     setScreenCols(ws.ws_col);
 
     return 0;
@@ -52,6 +54,8 @@ State::State() {
     editor_mode = 0;
     updateDimensions(); 
     offsetVertical = 0;
+    status = "NORMAL";
+    filename = "";
 }
 
 void State::setCursorX(int x) {
@@ -73,6 +77,22 @@ std::string State::getBuff() {
 
 int State::getEditorMode() {
     return editor_mode;
+}
+
+std::string State::getStatus(){
+    return status;
+}
+
+void State::setStatus(std::string _status) {
+    status = _status;
+}
+
+void State::setFileName(std::string _filename) {
+    filename = _filename;
+}
+
+std::string State::getFileName() {
+    return filename;
 }
 
 int State::setEditorMode(int _mode) {

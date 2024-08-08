@@ -10,7 +10,11 @@ class State {
         int getCursorY();
 
         std::string getBuff();
+        std::string getStatus();
+        void setStatus(std::string _status);
 
+        std::string getFileName();
+        void setFileName(std::string _filename);
         int getEditorMode();
         int setEditorMode(int _mode); 
         int getScreenRows();
