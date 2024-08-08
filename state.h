@@ -11,7 +11,12 @@ class State {
 
         std::string getBuff();
         std::string getStatus();
+        std::string getSearch();
+        void setSearch(std::string _search);
         void setStatus(std::string _status);
+
+        int getSearchRes();
+        void setSearchRes(int _searchRes);
 
         std::string getFileName();
         void setFileName(std::string _filename);
@@ -31,6 +36,8 @@ class State {
         int getBuffY();
         void setBuffX(int x);
         void setBuffY(int y);
+        void setBuffOffset(int _off);
+        int getBuffOffset();
 
         int getOffsetVertical();
         void setOffsetVertical(int _off);

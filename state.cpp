@@ -8,10 +8,13 @@ int cursor_y;
 std::string buff;
 std::string status;
 std::string filename;
+std::string search;
 // 0 is normal, 1 is insert, 2 is special (: mode)
 int editor_mode;
 int screenRows;
 int screenCols;
+int search_res;
+int buffOffset;
 
 //used for saving cursor position
 int buff_x;
@@ -56,6 +59,8 @@ State::State() {
     offsetVertical = 0;
     status = "NORMAL";
     filename = "";
+    search = "";
+    search_res = -1;
 }
 
 void State::setCursorX(int x) {
@@ -95,8 +100,24 @@ std::string State::getFileName() {
     return filename;
 }
 
+void State::setSearch(std::string _search) {
+    search = _search;
+}
+
+std::string State::getSearch() {
+    return search;
+}
+
+int State::getSearchRes() {
+    return search_res;
+}
+
+void State::setSearchRes(int _searchRes) {
+    search_res = _searchRes;
+}
+
 int State::setEditorMode(int _mode) {
-        if(_mode != 0 && _mode != 1 && _mode != 2) {
+        if(_mode != 0 && _mode != 1 && _mode != 2 && _mode != 3) {
             return -1;
         }
         editor_mode = _mode;
@@ -138,4 +159,12 @@ void State::setOffsetVertical(int _off) {
     else {
         offsetVertical = _off;
     }
+}
+
+int State::getBuffOffset() {
+    return buffOffset;
+}
+
+void State::setBuffOffset(int _off) {
+    buffOffset = _off;
 }

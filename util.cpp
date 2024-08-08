@@ -18,3 +18,20 @@ void quitRegular() {
     exit(0);
 }
 
+int computeAdditionalOffset(int line, int current_offset, int rows) {
+    if(line < current_offset + rows && line >= current_offset) {
+        return 0;
+    }
+
+    if(line >= current_offset + rows) {
+        return line - (current_offset + rows);
+    }
+
+    if(line < current_offset) {
+        return -(current_offset - line);
+    }
+
+    
+    return 0;
+}
+

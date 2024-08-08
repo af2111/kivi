@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <variant>
 #include <vector>
 #include <fstream>
 #include "util.h"
@@ -103,6 +104,16 @@ class Text {
         int getMaxLine() {
             return max_line;
         }
+
+        // returns index of first line containing a string (starting from start), or -1, if not found
+        int findStr(std::string search, int start) {
+            for(int i = start; i <= max_line; i++) {
+                if(lines[i].getText().find(search) != std::variant_npos) {
+                    return i;
+                }
+            }
+            return -1;
+        }
 };
 
 /*** INPUT HANDLER CLASS ***/
@@ -152,11 +163,13 @@ class InputHandler {
         void saveCursorPos() {
             state->setBuffX(state->getCursorX());
             state->setBuffY(state->getCursorY());
+            state->setBuffOffset(state->getOffsetVertical());
         }
 
         void restoreCursorPos() {
             state->setCursorX(state->getBuffX());
             state->setCursorY(state->getBuffY());
+            state->setOffsetVertical(state->getBuffOffset());
         }
 
         int statusBackspace() {
@@ -296,6 +309,19 @@ class InputHandler {
                                         state->setStatus("File doesn't exist!");
                                     }
                                 }
+                                if(command_text.substr(0, 1) == "s") {
+                                    state->setSearch(command_text.substr(2));
+                                    state->setSearchRes(text->findStr(state->getSearch(), 0));
+                                    saveCursorPos();
+                                    if(state->getSearchRes() == -1) {
+                                        state->setStatus("Not Found!");
+                                        break;
+                                    }
+                                    state->setOffsetVertical(state->getOffsetVertical() + computeAdditionalOffset(state->getSearchRes(), state->getOffsetVertical(), state->getScreenCols()));
+                                    state->setCursorY(state->getSearchRes());
+                                    state->setEditorMode(3);
+
+                                }
                                 break;
                             }
                             break;
@@ -305,10 +331,41 @@ class InputHandler {
                         default:
                             statusWriteChar(current_char);
                             break;
-                        
-                            
                     }
                     break;
+
+                case 3:
+                    int start = state->getSearchRes();
+                    int res = text->findStr(state->getSearch(), start + 1);
+                    state->setSearchRes(res);
+                    if(res == -1) {
+                        state->setStatus("break");
+                        state->setSearchRes(text->findStr(state->getSearch(), 0));
+                        state->setOffsetVertical(state->getSearchRes());
+                        state->setCursorY(state->getSearchRes());
+                        break;
+                    }
+                    state->setCursorY(res);
+                    int offsetNeeded = computeAdditionalOffset(res, state->getOffsetVertical(), state->getScreenRows());
+                    if(offsetNeeded != 0) {
+                        state->setOffsetVertical(state->getOffsetVertical() + computeAdditionalOffset(state->getSearchRes(), state->getOffsetVertical(), state->getScreenRows()) + state->getScreenRows() - 1);
+                    }
+                    state->setStatus(std::to_string(offsetNeeded)); 
+                    switch(current_char) {
+                        case 'n':
+                            break;
+                        case '\n':
+                            state->setCursorY(start);
+                            saveCursorPos();
+                            enterNormalMode();
+                            break;
+                        case 27:
+                            restoreCursorPos();
+                            enterNormalMode();
+                            break;
+                    }
+                    
+
             }
         }
 };

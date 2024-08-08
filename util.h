@@ -5,5 +5,6 @@
 
 void die(std::string err);   
 void quitRegular();
+int computeAdditionalOffset(int line, int current_offset, int rows);
 
 #endif
