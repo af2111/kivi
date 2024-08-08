@@ -15,6 +15,8 @@ int screenCols;
 int buff_x;
 int buff_y;
 
+int offsetVertical;
+
 int State::getScreenRows() {
     return screenRows;
 }
@@ -49,6 +51,7 @@ State::State() {
     cursor_y = 0;
     editor_mode = 0;
     updateDimensions(); 
+    offsetVertical = 0;
 }
 
 void State::setCursorX(int x) {
@@ -102,4 +105,17 @@ void State::setBuffX(int x) {
 
 void State::setBuffY(int y) {
     buff_y = y;
+}
+
+int State::getOffsetVertical() {
+    return offsetVertical;
+}
+
+void State::setOffsetVertical(int _off) {
+    if(_off < 0 ) {
+        return;
+    }
+    else {
+        offsetVertical = _off;
+    }
 }

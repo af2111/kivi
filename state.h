@@ -27,6 +27,9 @@ class State {
         int getBuffY();
         void setBuffX(int x);
         void setBuffY(int y);
+
+        int getOffsetVertical();
+        void setOffsetVertical(int _off);
 };
 
 
