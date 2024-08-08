@@ -61,7 +61,12 @@ class Text {
             return 0;
         }
         Line *getCurrentLine() {
-            return &lines.at(state->getCursorY());
+            if(state->getCursorY() >= max_line) {
+                return NULL;
+            }
+
+            Line *ret = &lines.at(state->getCursorY());
+            return ret;
         }
         Line *getLine(int index) {
             if(index <= max_line) {
@@ -136,13 +141,23 @@ class InputHandler {
             std::cin.get(current_char);    
         }
 
-        void goDown(State *state, Text *text) {        
+        void goDown() {        
             if(state->getCursorY() + 1 >= state->getScreenRows() + state->getOffsetVertical()) {
                 state->setOffsetVertical(state->getOffsetVertical() + 1);
                 text->addLine();
             }
             state->setCursorY(state->getCursorY() + 1);
-            state->setCursorX(text->getLine(state->getCursorY() + 1)->getText().length());
+            state->setCursorX(text->getLine(state->getCursorY())->getText().length());
+        }
+
+        void goUp() {
+            if(state->getCursorY() != 0) {
+                if(state->getCursorY() - 1 <= state->getOffsetVertical()) {
+                    state->setOffsetVertical(state->getOffsetVertical() - 1);
+                }
+                state->setCursorY(state->getCursorY() - 1);
+                state->setCursorX(text->getLine(state->getCursorY())->getText().length());
+            }
         }
         void handleChar() {
             int current_state = state->getEditorMode();
@@ -160,33 +175,22 @@ class InputHandler {
                     switch(current_char) {
                         case 'i':
                             state->setEditorMode(1);
-                            text->getLine((max_rows + vertical_offset) - 1)->append("INSERT");
+                            state->setStatus("INSERT");
                             break;
                         case ':':
                             state->setBuffX(currentX);
                             state->setBuffY(currentY);
-                            text->getLine((max_rows + vertical_offset) - 1)->append(":");
-                            state->setCursorY((max_rows + vertical_offset) - 1);
+                            state->setStatus(":");
+                            state->setCursorY((max_rows + vertical_offset));
                             state->setCursorX(1);
                             state->setEditorMode(2);
                             break;
                         case '\n':
                         case 'j':
-                            if(currentY + 1 >= max_rows + vertical_offset) {
-                                state->setOffsetVertical(state->getOffsetVertical() + 1);
-                                text->addLine();
-                            }
-                            state->setCursorY(currentY + 1);
-                            state->setCursorX(text->getLine(currentY + 1)->getText().length());
+                            goDown();
                             break;
                         case 'k':
-                            if(currentY != 0) {
-                                if(currentY - 1 <= vertical_offset) {
-                                    state->setOffsetVertical(vertical_offset - 1);
-                                }
-                                state->setCursorY(currentY - 1);
-                                state->setCursorX(text->getLine(currentY - 1)->getText().length());
-                            }
+                            goUp();
                             break;
                         case 'h':
                             if(currentX != 0) {
@@ -205,12 +209,11 @@ class InputHandler {
                     switch(current_char) {
                         case 27: 
                             state->setEditorMode(0);
-                            text->getLine((max_rows + vertical_offset)-1)->erase(0);
+                            state->setStatus("NORMAL");
                             break;
                         case '\n':
                             if(currentX == current_line->getText().length()) {
-                                state->setCursorY(currentY + 1);
-                                state->setCursorX(text->getLine(currentY + 1)->getText().length());
+                                goDown();
                             } else {
                                 if(currentY + 1 < state->getScreenRows()) {
                                     std::string part_1 = current_line->getText().substr(0, currentX);
@@ -226,7 +229,8 @@ class InputHandler {
                         case 127:
                         case '\b':
                             if(currentX == 0) {
-
+                                goUp();
+                                break;
                             }
                             current_line->erase(currentX - 1);
                             state->setCursorX(currentX - 1);
@@ -242,16 +246,16 @@ class InputHandler {
                     switch(current_char) {
                         case 27:
                             state->setEditorMode(0);
-                            current_line->erase(0);
+                            state->setStatus("NORMAL");
                             state->setCursorX(buff_x);
                             state->setCursorY(buff_y);
                             break;
                         case '\n':
                             //get command text without colon
                             {
-                                std::string command_text = current_line->getText().substr(1);
+                                std::string command_text = state->getStatus().substr(1);
                                 state->setEditorMode(0);
-                                current_line->erase(0);
+                                state->setStatus("NORMAL");
                                 state->setCursorX(buff_x);
                                 state->setCursorY(buff_y);
                                 if(command_text == "q") {
@@ -268,15 +272,22 @@ class InputHandler {
                             break;
                         default:
                             state->setCursorX(currentX + 1);
-                            current_line->insert(currentX, std::string(1, current_char));
+                            state->setStatus(state->getStatus().append(std::string(1, current_char)));
                             break;
-                        
                         
                             
                     }
                     break;
             }
         }
+};
+
+class StatusBar {
+    public:
+        std::string content;
+        StatusBar() {
+            content = "NORMAL";
+        }       
 };
 
 class Screen {
@@ -319,8 +330,12 @@ class Screen {
                 // this clears everything in the current line except the tilde 
                 state->buffAppend("\x1b[K"); 
 
-                if(i < (state->getScreenRows() + offsetVertical) - 1) {
+                if(i < (state->getScreenRows() + offsetVertical)) {
                     state->buffAppend("\r\n");
+                }
+                if(i == state->getScreenRows() + offsetVertical - 1) {
+                    state->buffAppend(state->getStatus());
+                    state->buffAppend("\x1b[K"); 
                 }
             }
         }
