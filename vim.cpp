@@ -1,120 +1,20 @@
 /*** INCLUDES  ***/
 
 #include <cstring>
-#include <filesystem>
-#include <iostream>
 #include <sstream>
 #include <string>
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <variant>
-#include <vector>
-#include <fstream>
 #include "util.h"
 #include "terminal.h"
 #include "state.h"
 #include "line.h"
+#include "text.h"
 /*** GLOBALS ***/
 
 
-class Text {
-    private:
-        State *state;
-        std::vector<Line> lines;
-        int max_line;
-    public:
-        Text(State *_state) {
-            state = _state;
-            for(int i = 0; i < state->getScreenRows(); i++) {
-                lines.push_back(Line(""));
-                max_line = i;
-            }
-        }
-        // returns -1 if line doesnt exist
-        int appendToLine(int index, std::string str) {
-            lines.at(index).append(str);
-            return 0;
-        }
-        Line *getCurrentLine() {
-            if(state->getCursorY() > max_line) {
-                return NULL;
-            }
-
-            Line *ret = &lines.at(state->getCursorY());
-            return ret;
-        }
-        Line *getLine(int index) {
-            if(index <= max_line) {
-                return &lines.at(index);
-            }
-            return NULL;
-        }
-
-        void writeFile(std::string path) {
-            int last_text_line;
-            for(int i = 0; i <= max_line; i++) {
-                if(lines.at(i).getText() != "") {
-                    last_text_line = i;
-                }
-            }
-
-            std::ofstream write_file;
-            write_file.open(path);
-            
-            for(int i = 0; i <= last_text_line; i++) {
-                write_file << lines.at(i).getText() << "\n";
-            }
-            write_file.close();
-
-        }
-
-        void addLine() {
-            max_line++;
-            lines.push_back(Line(""));
-        }
-        void clear() {
-            for(int i = 0; i < max_line; i++) {
-                getLine(i)->erase(0);
-            }
-        }
-        int openFile(std::string path) {
-            if(!std::filesystem::exists(path)) {
-                return -1;
-            }
-            clear();
-            std::ifstream file;
-            file.open(path);
-            std::string current_line;
-            int i = 0;
-            while(std::getline(file, current_line)) {
-                if(i > max_line) {
-                    addLine();
-                }
-                getLine(i)->append(current_line);
-                i++;
-            }
-
-
-            return 0;
-                
-        }
-
-        int getMaxLine() {
-            return max_line;
-        }
-
-        // returns index of first line containing a string (starting from start), or -1, if not found
-        int findStr(std::string search, int start) {
-            for(int i = start; i <= max_line; i++) {
-                if(lines[i].getText().find(search) != std::variant_npos) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-};
 
 /*** INPUT HANDLER CLASS ***/
 
@@ -317,7 +217,7 @@ class InputHandler {
                                         state->setStatus("Not Found!");
                                         break;
                                     }
-                                    state->setOffsetVertical(state->getOffsetVertical() + computeAdditionalOffset(state->getSearchRes(), state->getOffsetVertical(), state->getScreenCols()));
+                                    state->setOffsetVertical(state->getSearchRes());
                                     state->setCursorY(state->getSearchRes());
                                     state->setEditorMode(3);
 
@@ -345,12 +245,10 @@ class InputHandler {
                         state->setCursorY(state->getSearchRes());
                         break;
                     }
+                    int offsetNeeded = res; //computeAdditionalOffset(res, state->getOffsetVertical(), state->getScreenRows());
+                    state->setOffsetVertical(offsetNeeded);
+                    state->setStatus("Offset: " + std::to_string(offsetNeeded) + "Start: " + std::to_string(start)); 
                     state->setCursorY(res);
-                    int offsetNeeded = computeAdditionalOffset(res, state->getOffsetVertical(), state->getScreenRows());
-                    if(offsetNeeded != 0) {
-                        state->setOffsetVertical(state->getOffsetVertical() + computeAdditionalOffset(state->getSearchRes(), state->getOffsetVertical(), state->getScreenRows()) + state->getScreenRows());
-                    }
-                    state->setStatus(std::to_string(offsetNeeded)); 
                     switch(current_char) {
                         case 'n':
                             break;
@@ -368,14 +266,6 @@ class InputHandler {
 
             }
         }
-};
-
-class StatusBar {
-    public:
-        std::string content;
-        StatusBar() {
-            content = "NORMAL";
-        }       
 };
 
 class Screen {
@@ -462,8 +352,6 @@ class Screen {
         }
 
 };
-
-
 
 
 
