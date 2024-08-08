@@ -199,9 +199,13 @@ class InputHandler {
                             }
                             break;
                         case 'l':
-                            if(currentX + 1 < max_cols) {
-                                state->setCursorX(currentX + 1);
+                            if(currentX >= current_line->getText().length()) {
+                                break;
                             }
+                            state->setCursorX(currentX + 1);
+                            break;
+                        case '$':
+                            state->setCursorX(current_line->getText().length());
                             break;
                     }
                         
