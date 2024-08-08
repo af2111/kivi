@@ -12,88 +12,10 @@
 #include <fstream>
 #include "util.h"
 #include "terminal.h"
-
+#include "state.h"
 
 /*** GLOBALS ***/
 
-class State {
-    private:
-        int cursor_x;
-        int cursor_y;
-        std::string buff;
-        // 0 is normal, 1 is insert, 2 is special (: mode)
-        int editor_mode;
-        int screenRows;
-        int screenCols;
-    public:
-        void setCursorX(int x) {
-            cursor_x = x;
-        }
-        void setCursorY(int y) {
-            cursor_y = y;
-        }
-
-        int getCursorX() {
-            return cursor_x;
-        }
-        
-        int getCursorY() {
-            return cursor_y;
-        }
-        void buffAppend(std::string val) {
-            buff.append(val);
-        }
-        void buffRemove(int index) {
-            buff.erase(index);
-        }
-        int getEditorMode() {
-            return editor_mode;
-        }
-        // returns 0 on success and -1 when an error occurs
-        int setEditorMode(int _mode) {
-            if(_mode != 0 && _mode != 1 && _mode != 2) {
-                return -1;
-            }
-            editor_mode = _mode;
-            return 0;
-        }
-        std::string getBuff() {
-            return buff;
-        }
-        int getScreenRows() {
-            return screenRows;
-        }
-        int getScreenCols() {
-            return screenCols;
-        }
-        void setScreenRows(int _rows) {
-            screenRows = _rows;
-        } 
-        void setScreenCols(int _cols) {
-            screenCols = _cols;
-        } 
-
-
-        int updateDimensions() {
-            struct winsize ws;
-            //Terminal Input/Output Control - Get Window Size
-            if(ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0 || ws.ws_row == 0) {
-                return -1;
-            }
-            setScreenRows(ws.ws_row);
-            setScreenCols(ws.ws_col);
-
-            return 0;
-        }
-
-        State() {
-            buff = "";
-            cursor_x = 0;
-            cursor_y = 0;
-            editor_mode = 0;
-            updateDimensions(); 
-        }
-};
 
 class Line {
     private:
@@ -149,16 +71,22 @@ class Text {
         }
 
         void writeFile(std::string path) {
+            int last_text_line;
+            for(int i = 0; i <= max_line; i++) {
+                if(lines.at(i).getText() != "") {
+                    last_text_line = i;
+                }
+            }
+
             std::ofstream write_file;
             write_file.open(path);
-            for(int i = 0; i <= max_line; i++) {
+            for(int i = 0; i <= last_text_line; i++) {
                 write_file << lines.at(i).getText() << "\n";
             }
             write_file.close();
 
         }
 };
-
 
 /*** INPUT HANDLER CLASS ***/
 
@@ -187,13 +115,19 @@ class InputHandler {
             Line *current_line = text->getCurrentLine();
             int max_rows = state->getScreenRows();
             int max_cols = state->getScreenCols();
+            // these are used to put the cursor back after exiting colon mode
+            int buff_x = state->getBuffX();
+            int buff_y = state->getBuffY();
             switch(current_state) {
                 case 0:
                     switch(current_char) {
                         case 'i':
                             state->setEditorMode(1);
+                            text->getLine(max_rows - 1)->append("INSERT");
                             break;
                         case ':':
+                            state->setBuffX(currentX);
+                            state->setBuffY(currentY);
                             text->getLine(max_rows - 1)->append(":");
                             state->setCursorY(max_rows - 1);
                             state->setCursorX(1);
@@ -229,6 +163,7 @@ class InputHandler {
                     switch(current_char) {
                         case 27: 
                             state->setEditorMode(0);
+                            text->getLine(max_rows-1)->erase(0);
                             break;
                         case '\n':
                             if(currentX == current_line->getText().length()) {
@@ -256,17 +191,33 @@ class InputHandler {
                     switch(current_char) {
                         case 27:
                             state->setEditorMode(0);
+                            current_line->erase(0);
+                            state->setCursorX(buff_x);
+                            state->setCursorY(buff_y);
                             break;
-                        case 'w':
-                            text->writeFile("text"); 
-                            break;
-                        case 'q':
-                            quitRegular();
+                        case '\n':
+                            //get command text without colon
+                            {
+                                std::string command_text = current_line->getText().substr(1);
+                                state->setEditorMode(0);
+                                current_line->erase(0);
+                                state->setCursorX(buff_x);
+                                state->setCursorY(buff_y);
+                                if(command_text == "q") {
+                                    quitRegular();
+                                    break;
+                                }
+                                if(command_text == "w") {
+                                    text->writeFile("text");
+                                }
+                            }
                             break;
                         default:
                             state->setCursorX(currentX + 1);
                             current_line->insert(currentX, std::string(1, current_char));
                             break;
+                        
+                        
                             
                     }
                     break;
